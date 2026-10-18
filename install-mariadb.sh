@@ -73,7 +73,9 @@ temp_table_size="32M"
 if [[ $role == replica ]]; then
   # More cache is reserved for report reads; keep CPU headroom for report execution.
   buffer_pool_size="10G"
-  read_only="NO_LOCK_NO_ADMIN"
+  # Keep application connections from writing while allowing the replica SQL
+  # thread to apply events received from the primary.
+  read_only="ON"
   replica_settings=$'\n# Replica recovery and bounded parallel apply.\nrelay_log = mariadb-relay\nrelay_log_recovery = ON\nrelay_log_purge = ON\nslave_parallel_threads = 2\nslave_parallel_mode = optimistic'
 fi
 
@@ -128,4 +130,8 @@ fi
 systemctl enable --now mariadb
 mariadb --protocol=socket -e "SELECT @@server_id AS server_id, @@read_only AS read_only, @@gtid_strict_mode AS gtid_strict_mode;"
 
-echo "Installed fresh MariaDB $role node. Do not run replication initialization until this node is seeded."
+if [[ $role == primary ]]; then
+  echo "Installed fresh MariaDB primary node. Install and seed the replicas before initializing replication on them."
+else
+  echo "Installed fresh MariaDB replica node. Do not run replication initialization until this replica is seeded from the primary."
+fi
