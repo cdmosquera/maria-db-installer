@@ -67,6 +67,32 @@ sudo ./initialize-replication.sh replica --source-host 10.0.1.11 --repl-user rep
 
 Use real private IP addresses or resolvable host names in `--replica-host`; `skip_name_resolve` makes IP addresses the simpler choice. Avoid `%` as a replica host because it grants replication access from anywhere.
 
+## Replica-driven seeding
+
+On each new replica, generate a dedicated key. Do not reuse a GitHub or administrator key:
+
+```bash
+sudo install -d -m 700 /root/.ssh
+sudo ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519_mariadb_primary
+sudo cat /root/.ssh/id_ed25519_mariadb_primary.pub
+```
+
+Copy that public key to the primary. On the primary, authorize the replica's private IP and key:
+
+```bash
+sudo ./setup-replica-source-access.sh --replica-ip 172.16.0.7 --public-key-file /path/to/replica-1.pub
+```
+
+The setup creates a restricted `mariadb-repl` account. The key can only originate from its declared IP and can only stream a backup or create that replica's replication account.
+
+Run this on the new replica. It streams a consistent primary backup, restores it, sets the backup's GTID position, and starts replication. It refuses a replica with user schemas or existing replication.
+
+```bash
+sudo ./initialize-replication.sh --source-host 172.16.0.5 --ssh-key /root/.ssh/id_ed25519_mariadb_primary --replace-empty-replica-data
+```
+
+Repeat these steps for every future replica, using a unique server ID, private IP, and key.
+
 ## Important operating constraints
 
 - This is asynchronous GTID replication. It can lose transactions that have not reached a replica if the active writer fails; it is not a substitute for a synchronous quorum.

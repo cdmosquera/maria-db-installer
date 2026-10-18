@@ -49,7 +49,7 @@ if [[ -e $data_dir/mysql && $resume != "true" ]]; then
 fi
 
 apt-get update
-apt-get install -y mariadb-server mariadb-client
+apt-get install -y mariadb-server mariadb-client mariadb-backup
 
 # Ubuntu's package owns the main configuration. It may be mariadb.cnf even
 # when the my.cnf alternative has not been installed.
