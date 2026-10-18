@@ -17,7 +17,7 @@ The scripts use the OS distribution's MariaDB package. Pin or replace that packa
 
 ## mysqld configuration
 
-During installation, the script generates the live server configuration at `/etc/mysql/mysqld-topology.cnf`, populated with its default role-specific settings and the supplied server ID, listener address, and port. It then appends this line to Ubuntu's default `/etc/mysql/my.cnf` (only if absent):
+During installation, the script generates the live server configuration at `/etc/mysql/mysqld-topology.cnf`, populated with its default role-specific settings and the supplied server ID, listener address, and port. It then appends this line to Ubuntu's package-managed main configuration (`/etc/mysql/mariadb.cnf`, falling back to `/etc/mysql/my.cnf` only when needed):
 
 ```ini
 !include /etc/mysql/mysqld-topology.cnf

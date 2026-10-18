@@ -37,15 +37,24 @@ done
 [[ -f /etc/os-release ]] && . /etc/os-release
 [[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 26.04 ]] || { echo "This installer targets Ubuntu 26.04 LTS only." >&2; exit 1; }
 
-main_config="/etc/mysql/my.cnf"
+main_config=""
 mysqld_config="/etc/mysql/mysqld-topology.cnf"
 include_line="!include $mysqld_config"
-[[ -f $main_config ]] || { echo "Missing Ubuntu MariaDB main configuration: $main_config" >&2; exit 1; }
 [[ ! -e $mysqld_config ]] || { echo "Refusing: generated mysqld configuration already exists: $mysqld_config" >&2; exit 1; }
 [[ ! -e $data_dir/mysql ]] || { echo "Refusing: MariaDB data already exists at $data_dir" >&2; exit 1; }
 
 apt-get update
 apt-get install -y mariadb-server mariadb-client
+
+# Ubuntu's package owns the main configuration. It may be mariadb.cnf even
+# when the my.cnf alternative has not been installed.
+for candidate in /etc/mysql/mariadb.cnf /etc/mysql/my.cnf; do
+  if [[ -f $candidate ]]; then
+    main_config=$candidate
+    break
+  fi
+done
+[[ -n $main_config ]] || { echo "MariaDB installed, but no Ubuntu main configuration file was found." >&2; exit 1; }
 
 # Package installation is complete before any MariaDB service command is used.
 systemctl stop mariadb

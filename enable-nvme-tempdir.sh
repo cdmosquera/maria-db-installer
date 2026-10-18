@@ -9,7 +9,7 @@ Usage: sudo ./enable-nvme-tempdir.sh --mount /path/to/nvme [--temp-dir /path/to/
 
 --mount must be the exact, already-mounted root of a persistent NVMe filesystem.
 The script creates the temporary workspace, generates /etc/mysql/mysqld-nvme-temp.cnf,
-and adds its !include line to /etc/mysql/my.cnf. It does not move /var/lib/mysql.
+and adds its !include line to Ubuntu's main MariaDB configuration. It does not move /var/lib/mysql.
 EOF
 }
 
@@ -32,11 +32,17 @@ mount_target=$(findmnt -n -o TARGET -T "$nvme_mount")
 [[ $mount_target == "$nvme_mount" ]] || { echo "--mount must be the filesystem mount point itself: $nvme_mount" >&2; exit 1; }
 [[ $temp_dir == "$nvme_mount"/* ]] || { echo "--temp-dir must be below --mount." >&2; exit 2; }
 
-main_config="/etc/mysql/my.cnf"
+main_config=""
 topology_config="/etc/mysql/mysqld-topology.cnf"
 temp_config="/etc/mysql/mysqld-nvme-temp.cnf"
 include_line="!include $temp_config"
-[[ -f $main_config && -f $topology_config ]] || { echo "Run install-mariadb.sh first." >&2; exit 1; }
+for candidate in /etc/mysql/mariadb.cnf /etc/mysql/my.cnf; do
+  if [[ -f $candidate ]]; then
+    main_config=$candidate
+    break
+  fi
+done
+[[ -n $main_config && -f $topology_config ]] || { echo "Run install-mariadb.sh first." >&2; exit 1; }
 [[ ! -e $temp_config ]] || { echo "Refusing: NVMe temp configuration already exists: $temp_config" >&2; exit 1; }
 systemctl is-active --quiet mariadb || { echo "MariaDB is not running; complete installation first." >&2; exit 1; }
 
