@@ -17,7 +17,7 @@ work=$(mktemp -d /var/tmp/mariadb-seed.XXXXXX); trap 'rm -rf "$work"' EXIT
 ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes "mariadb-repl@$source_host" backup-stream | mbstream -x -C "$work"
 mariadb-backup --prepare --target-dir="$work"
 gtid=$(awk 'NF>=3 {print $3; exit}' "$work"/mariadb_backup_binlog_info "$work"/xtrabackup_binlog_info 2>/dev/null)
-[[ -n $gtid ]] || { echo 'Backup did not contain a GTID position.' >&2; exit 1; }
+[[ $gtid =~ ^[0-9]+-[0-9]+-[0-9]+(,[0-9]+-[0-9]+-[0-9]+)*$ ]] || { echo 'Backup did not contain a valid GTID position.' >&2; exit 1; }
 printf '%s\n%s\n' "$replica_ip" "$password" | ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes "mariadb-repl@$source_host" create-replication-user
 systemctl stop mariadb
 find /var/lib/mariadb -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
@@ -30,4 +30,4 @@ SET GLOBAL gtid_slave_pos='$gtid';
 CHANGE MASTER TO MASTER_HOST='$source_host', MASTER_PORT=3306, MASTER_USER='replicator', MASTER_PASSWORD='$p', MASTER_USE_GTID=slave_pos;
 START REPLICA;
 SQL
-mariadb --protocol=socket -e 'SHOW REPLICA STATUS\\G' | egrep 'Slave_IO_Running:|Slave_SQL_Running:|Last_IO_Error:|Last_SQL_Error:'
+mariadb --protocol=socket -e 'SHOW REPLICA STATUS\G' | egrep 'Slave_IO_Running:|Slave_SQL_Running:|Last_IO_Error:|Last_SQL_Error:'
