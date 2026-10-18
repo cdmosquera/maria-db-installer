@@ -14,18 +14,20 @@ Required:
 Options:
   --bind-address ADDRESS   listen address (default: 0.0.0.0)
   --port N                 MariaDB port (default: 3306)
+  --resume                 continue only an interrupted package installation; never resets data
 
 The script supports Ubuntu 26.04 LTS hosts with systemd and installs the distribution's
-mariadb-server package. MariaDB uses Ubuntu's default /var/lib/mysql location on the OS disk.
+mariadb-server package. MariaDB uses Ubuntu's default /var/lib/mariadb location on the OS disk.
 EOF
 }
 
-role=""; server_id=""; data_dir="/var/lib/mysql"
+role=""; server_id=""; data_dir="/var/lib/mariadb"; resume="false"
 bind_address="0.0.0.0"; port="3306"
 while (($#)); do
   case "$1" in
     --role) role=${2:?}; shift 2;; --server-id) server_id=${2:?}; shift 2;;
     --bind-address) bind_address=${2:?}; shift 2;; --port) port=${2:?}; shift 2;;
+    --resume) resume="true"; shift;;
     -h|--help) usage; exit 0;; *) echo "Unknown argument: $1" >&2; usage >&2; exit 2;;
   esac
 done
@@ -41,7 +43,10 @@ main_config=""
 mysqld_config="/etc/mysql/mysqld-topology.cnf"
 include_line="!include $mysqld_config"
 [[ ! -e $mysqld_config ]] || { echo "Refusing: generated mysqld configuration already exists: $mysqld_config" >&2; exit 1; }
-[[ ! -e $data_dir/mysql ]] || { echo "Refusing: MariaDB data already exists at $data_dir" >&2; exit 1; }
+if [[ -e $data_dir/mysql && $resume != "true" ]]; then
+  echo "Refusing: MariaDB data already exists at $data_dir. Use --resume only after this installer was interrupted after package installation." >&2
+  exit 1
+fi
 
 apt-get update
 apt-get install -y mariadb-server mariadb-client

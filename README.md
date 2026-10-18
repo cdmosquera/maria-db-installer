@@ -8,9 +8,11 @@ All three nodes have GTID and binary logs enabled. One server is installed with 
 
 Fresh installation and replication initialization are intentionally separate:
 
-1. MariaDB stores its data in Ubuntu's standard `/var/lib/mysql` location on the OS disk. Size the OS disk for the database, binary logs, relay logs, operating-system overhead, and local backup staging if used. No separate database disk or mount is required.
+1. MariaDB stores its data in Ubuntu's standard `/var/lib/mariadb` location on the OS disk. Size the OS disk for the database, binary logs, relay logs, operating-system overhead, and local backup staging if used. No separate database disk or mount is required.
 2. Assign a distinct numeric server ID to every host. Example: `101` for the primary; `201` and `202` for the read-only replicas.
 3. Install each host once. The script refuses to proceed if its managed configuration or target data directory already exists, so reruns cannot overwrite database data.
+
+If a package installation is interrupted after Ubuntu has initialized the empty system database but before this script writes `/etc/mysql/mysqld-topology.cnf`, use `--resume` exactly once. It does not reset, delete, or reinitialize the existing data directory.
 4. On the primary, run the `source` action and create a consistent backup. Restore that backup onto each read-only replica before running the `replica` action. Backup/restore is purposefully outside this installer.
 
 The scripts use the OS distribution's MariaDB package. Pin or replace that package source externally if a specific MariaDB release is required.
@@ -23,7 +25,7 @@ During installation, the script generates the live server configuration at `/etc
 !include /etc/mysql/mysqld-topology.cnf
 ```
 
-The generated server configuration remains separate from Ubuntu's package-managed configuration fragments. It deliberately retains the package-managed default `datadir` of `/var/lib/mysql` on the OS disk. The installer refuses to replace an existing generated config, so edit it deliberately after installation.
+The generated server configuration remains separate from Ubuntu's package-managed configuration fragments. It deliberately retains the package-managed default `datadir` of `/var/lib/mariadb` on the OS disk. The installer refuses to replace an existing generated config, so edit it deliberately after installation.
 
 The included 4-vCPU / 16-GiB profile assigns a 9-GiB InnoDB buffer pool to the primary and 10 GiB to each report replica. It bounds in-memory internal temporary tables at 32 MiB per session, caps connections at 100, retains primary binary logs for 14 days, and configures two parallel replication workers per replica. Replica lag is accepted; the settings are intended to ensure eventual catch-up while preserving CPU capacity for reports. Slow-query logging is disabled until a production baseline establishes an appropriate threshold.
 
@@ -35,7 +37,7 @@ If a separate NVMe filesystem is mounted persistently, enable it only after Mari
 sudo ./enable-nvme-tempdir.sh --mount /mnt/nvme
 ```
 
-This creates `/mnt/nvme/mariadb-tmp`, generates `/etc/mysql/mysqld-nvme-temp.cnf`, and adds a second `!include` line to `/etc/mysql/my.cnf`. It sets `tmpdir`, `slave_load_tmpdir`, and the InnoDB temporary tablespace path. It does not move permanent data from `/var/lib/mysql`. The mount must be available before MariaDB starts and must persist across reboots.
+This creates `/mnt/nvme/mariadb-tmp`, generates `/etc/mysql/mysqld-nvme-temp.cnf`, and adds a second `!include` line to Ubuntu's main MariaDB configuration. It sets `tmpdir`, `slave_load_tmpdir`, and the InnoDB temporary tablespace path. It does not move permanent data from `/var/lib/mariadb`. The mount must be available before MariaDB starts and must persist across reboots.
 
 ## Examples
 

@@ -9,7 +9,7 @@ Usage: sudo ./enable-nvme-tempdir.sh --mount /path/to/nvme [--temp-dir /path/to/
 
 --mount must be the exact, already-mounted root of a persistent NVMe filesystem.
 The script creates the temporary workspace, generates /etc/mysql/mysqld-nvme-temp.cnf,
-and adds its !include line to Ubuntu's main MariaDB configuration. It does not move /var/lib/mysql.
+and adds its !include line to Ubuntu's main MariaDB configuration. It does not move /var/lib/mariadb.
 EOF
 }
 
@@ -94,4 +94,4 @@ fi
 
 systemctl restart mariadb
 mariadb --protocol=socket -e "SHOW VARIABLES WHERE Variable_name IN ('tmpdir', 'slave_load_tmpdir', 'innodb_temp_data_file_path');"
-echo "NVMe temporary workspace enabled at $temp_dir. MariaDB data remains in /var/lib/mysql."
+echo "NVMe temporary workspace enabled at $temp_dir. MariaDB data remains in /var/lib/mariadb."
