@@ -14,11 +14,11 @@ replica_ip=$(ip route get "$source_host" | awk '/src/ {for(i=1;i<=NF;i++) if($i=
 [[ -n $replica_ip ]] || { echo 'Could not determine this replica source IP.' >&2; exit 1; }
 read -r -s -p 'Replication password: ' password; echo; [[ -n $password ]] || exit 2
 work=$(mktemp -d /var/tmp/mariadb-seed.XXXXXX); trap 'rm -rf "$work"' EXIT
-ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes "mariadb-repl@$source_host" backup-stream | mbstream -x -C "$work"
+ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "mariadb-repl@$source_host" backup-stream | mbstream -x -C "$work"
 mariadb-backup --prepare --target-dir="$work"
 gtid=$(awk 'NF>=3 {print $3; exit}' "$work"/mariadb_backup_binlog_info "$work"/xtrabackup_binlog_info 2>/dev/null)
 [[ $gtid =~ ^[0-9]+-[0-9]+-[0-9]+(,[0-9]+-[0-9]+-[0-9]+)*$ ]] || { echo 'Backup did not contain a valid GTID position.' >&2; exit 1; }
-printf '%s\n%s\n' "$replica_ip" "$password" | ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes "mariadb-repl@$source_host" create-replication-user
+printf '%s\n%s\n' "$replica_ip" "$password" | ssh -i "$ssh_key" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "mariadb-repl@$source_host" create-replication-user
 systemctl stop mariadb
 find /var/lib/mariadb -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 mariadb-backup --copy-back --target-dir="$work"
