@@ -25,7 +25,7 @@ action=${1:-}; peer=${2:-}
 [[ $peer =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || exit 2
 case "$action" in
 backup-stream)
-  [[ $(/usr/bin/mariadb --protocol=socket -Nse "SELECT CONCAT(@@read_only,',',@@log_bin,',',@@gtid_strict_mode)") == '0,1,1' ]] || { echo 'Source is not a writable GTID/binlog primary.' >&2; exit 1; }
+  [[ $(/usr/bin/mariadb --protocol=socket -Nse "SELECT @@read_only = 0 AND @@log_bin AND @@gtid_strict_mode") == 1 ]] || { echo 'Source is not a writable GTID/binlog primary.' >&2; exit 1; }
   d=$(mktemp -d /var/tmp/mariadb-repl.XXXXXX); trap 'rm -rf "$d"' EXIT
   /usr/bin/mariadb-backup --backup --stream=xbstream --target-dir="$d" --user=root
   ;;
